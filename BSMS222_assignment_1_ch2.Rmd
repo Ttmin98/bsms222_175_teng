@@ -1,15 +1,9 @@
 ---
-title: "R Notebook"
-output: html_notebook
----
-
----
 title: "BSMS222_assignment_1_ch2"
 output:
   html_document:
     df_print: paged
 ---
-
 
 # Chapter 2 R basics
 
@@ -60,17 +54,17 @@ A more explicit way to ask R to show us the value stored in a is using print lik
 ```{r}
 print(a)
 ```
-We use the term **object** to describe stuff that is stored in R. Variables are examples, but objects can also be more complicated entities such as functions, which are described later.
+We use the term *object* to describe stuff that is stored in R. Variables are examples, but objects can also be more complicated entities such as functions, which are described later.
 
 ### 2.2.2 The workspace
 
-As we define objects in the console, we are actually changing the **workspace**. You can see all the variables saved in your workspace by typing:
+As we define objects in the console, we are actually changing the *workspace*. You can see all the variables saved in your workspace by typing:
 
 ```{r}
 ls()
 ```
 
-In RStudio, the **Environment** tab shows the values:
+In RStudio, the *Environment* tab shows the values:
 
 We should see `a`, `b`, and `c`. If you try to recover the value of a variable that is not in your workspace, you receive an error. For example, if you type `x` you will receive the following message: `Error: object 'x' not found`.
 
@@ -89,7 +83,7 @@ We already used the `install.packages`, `library`, and `ls` functions. We also u
 
 In general, we need to use parentheses to evaluate a function. If you type `ls`, the function is not evaluated and instead R shows you the code that defines the function. If you type `ls()` the function is evaluated and, as seen above, we see objects in the workspace.
 
-Unlike `ls`, most functions require one or more **arguments**. Below is an example of how we assign an object to the argument of the function `log`. Remember that we earlier defined `a` to be `1`:
+Unlike `ls`, most functions require one or more *arguments*. Below is an example of how we assign an object to the argument of the function `log`. Remember that we earlier defined `a` to be `1`:
 ```{r}
 log(8)
 log(a) 
@@ -260,10 +254,11 @@ sum(x)
 Based on the result, what do you think the functions `seq` and `sum` do? You can use `help`.
 
 a. `sum` creates a list of numbers and `seq` adds them up.
-**b.** `seq` creates a list of numbers and `sum` adds them up.
+b.`seq` creates a list of numbers and `sum` adds them up.
 c. `seq` creates a random list and `sum` computes the sum of 1 through 1,000.
 d. `sum` always returns the same number.
 
+answer:[b]
 
 4. In math and programming, we say that we evaluate a function when we replace the argument with a given number. So if we type `sqrt(4)`, we evaluate the `sqrt` function. In R, you can evaluate a function inside another function. The evaluations happen from the inside out. Use one line of code to compute the log, in base 10, of the square root of 100.
 ```{r}
@@ -274,9 +269,10 @@ log(sqrt(100),10)
 
 a. log(10^x)
 b. log10(x^10)
-**c.** log(exp(x))
+c. log(exp(x))
 d. exp(log(x, base = 2))
 
+answer: [c]
 
 ## 2.4 Data types
 
