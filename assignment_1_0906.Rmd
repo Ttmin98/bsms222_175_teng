@@ -62,7 +62,6 @@ As we define objects in the console, we are actually changing the **workspace**.
 
 ```{r}
 ls()
-#> [1] "a"        "b"        "c"        "dat"      "img_path" "murders"
 ```
 
 In RStudio, the **Environment** tab shows the values:
