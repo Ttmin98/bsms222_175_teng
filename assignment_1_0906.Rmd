@@ -73,9 +73,7 @@ Now since these values are saved in variables, to obtain a solution to our equat
 
 ```{r}
 (-b + sqrt(b^2 - 4*a*c) ) / ( 2*a )
-#> [1] 0.618
 (-b - sqrt(b^2 - 4*a*c) ) / ( 2*a )
-#> [1] -1.62
 ```
 
 ### 2.2.3 Functions
@@ -110,33 +108,27 @@ If you want a quick look at the arguments without opening the help system, you c
 
 ```{r}
 args(log)
-#> function (x, base = exp(1)) 
-#> NULL
 ```
 
 You can change the default values by simply assigning another object:
 
 ```{r}
 log(8, base = 2)
-#> [1] 3
 ```
 
 Note that we have not been specifying the argument `x` as such:
 ```{r}
 log(x = 8, base = 2)
-#> [1] 3
 ```
 
 The above code works, but we can save ourselves some typing: if no argument name is used, R assumes you are entering arguments in the order shown in the help file or by `args`. So by not using the names, it assumes the arguments are `x` followed by `base`:
 ```{r}
 log(8,2)
-#> [1] 3
 ```
 
 If using the arguments’ names, then we can include them in whatever order we want:
 ```{r}
 log(base = 2, x = 8)
-#> [1] 3
 ```
 
 To specify arguments, we must use `=`, and cannot use `<-`.
@@ -182,9 +174,7 @@ Other prebuilt objects are mathematical quantities, such as the constant
 $\pi$ and $\infty$ :
 ```{r}
 pi
-#> [1] 3.14
 Inf+1
-#> [1] Inf
 ```
 
 ### 2.2.5 Variable names
@@ -1259,7 +1249,7 @@ c("MA", "ME", "MI", "MO", "MU") %in% murders$abb
 
 ```{r}
 exercise7 <- c("MA", "ME", "MI", "MO", "MU") %in% murders$abb
-which(!exercise7 == "TRUE")
+which(exercise7 !=TRUE)
 ```
 
 
