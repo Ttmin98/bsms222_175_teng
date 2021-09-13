@@ -1,0 +1,370 @@
+---
+title: "BSMS222_assignment_3_ch4"
+output:
+  html_document:
+    df_print: paged
+---
+
+# Chapter 4 The tidyverse
+
+Up to now we have been manipulating vectors by reordering and subsetting them through indexing. However, once we start more advanced analyses, the preferred unit for data storage is not the vector but the data frame. In this chapter we learn to work directly with data frames, which greatly facilitate the organization of information. We will be using data frames for the majority of this book. We will focus on a specific data format referred to as *tidy* and on specific collection of packages that are particularly helpful for working with *tidy* data referred to as the *tidyverse*.
+
+We can load all the tidyverse packages at once by installing and loading the **tidyverse** package:
+```{r}
+library(tidyverse)
+```
+
+We will learn how to implement the tidyverse approach throughout the book, but before delving into the details, in this chapter we introduce some of the most widely used tidyverse functionality, starting with the **dplyr** package for manipulating data frames and the **purrr** package for working with functions. Note that the tidyverse also includes a graphing package, **ggplot2**, which we introduce later in Chapter 7 in the Data Visualization part of the book; the **readr** package discussed in Chapter 5; and many others. In this chapter, we first introduce the concept of *tidy data* and then demonstrate how we use the tidyverse to work with data frames in this format.
+
+
+## 4.1 Tidy data
+
+We say that a data table is in *tidy* format if each row represents one observation and columns represent the different variables available for each of these observations. The `murders` dataset is an example of a tidy data frame.
+```{r}
+head(murders)
+```
+
+Each row represent a state with each of the five columns providing a different variable related to these states: name, abbreviation, region, population, and total murders.
+
+To see how the same information can be provided in different formats, consider the following example:
+```{r}
+#>       country year fertility
+#> 1     Germany 1960      2.41
+#> 2 South Korea 1960      6.16
+#> 3     Germany 1961      2.44
+#> 4 South Korea 1961      5.99
+#> 5     Germany 1962      2.47
+#> 6 South Korea 1962      5.79
+```
+
+This tidy dataset provides fertility rates for two countries across the years. This is a tidy dataset because each row presents one observation with the three variables being country, year, and fertility rate. However, this dataset originally came in another format and was reshaped for the **dslabs** package. Originally, the data was in the following format:
+```{r}
+#>       country 1960 1961 1962
+#> 1     Germany 2.41 2.44 2.47
+#> 2 South Korea 6.16 5.99 5.79
+```
+
+The same information is provided, but there are two important differences in the format: 1) each row includes several observations and 2) one of the variables, year, is stored in the header. For the tidyverse packages to be optimally used, data need to be reshaped into `tidy` format, which you will learn to do in the Data Wrangling part of the book. Until then, we will use example datasets that are already in tidy format.
+
+Although not immediately obvious, as you go through the book you will start to appreciate the advantages of working in a framework in which functions use tidy formats for both inputs and outputs. You will see how this permits the data analyst to focus on more important aspects of the analysis rather than the format of the data.
+
+
+## 4.2 Exercises
+
+1. Examine the built-in dataset `co2`. Which of the following is true:
+
+a. `co2` is tidy data: it has one year for each row.
+b. `co2` is not tidy: we need at least one column with a character vector.
+c. `co2` is not tidy: it is a matrix instead of a data frame.
+d. `co2` is not tidy: to be tidy we would have to wrangle it to have three columns (year, month 
+     and value), then each co2 observation would have a row.
+
+```{r}
+head(co2)
+```
+answer: **d**
+
+
+2. Examine the built-in dataset `ChickWeight.` Which of the following is true:
+
+a. `ChickWeight` is not tidy: each chick has more than one row.
+b. `ChickWeight` is tidy: each observation (a weight) is represented by one row. The chick from 
+     which this measurement came is one of the variables.
+c. `ChickWeight` is not tidy: we are missing the year column.
+d. `ChickWeight` is tidy: it is stored in a data frame.
+
+```{r}
+ChickWeight
+```
+answer:**b**
+
+
+3. Examine the built-in dataset `BOD.` Which of the following is true:
+
+a. `BOD` is not tidy: it only has six rows.
+b. `BOD` is not tidy: the first column is just an index.
+c. `BOD` is tidy: each row is an observation with two values (time and demand)
+d. `BOD` is tidy: all small datasets are tidy by definition.
+
+```{r}
+BOD
+```
+answer:**c**
+
+
+4. Which of the following built-in datasets is tidy (you can pick more than one):
+
+a. `BJsales`
+b. `EuStockMarkets`
+c. `DNase`
+d. `Formaldehyde`
+e. `Orange`
+f. `UCBAdmissions`
+```{r}
+BJsales
+```
+```{r}
+EuStockMarkets
+```
+```{r}
+DNase
+```
+```{r}
+Formaldehyde
+```
+```{r}
+Orange
+```
+```{r}
+UCBAdmissions
+```
+answer:**c,d,e,f**
+
+
+## 4.3 Manipulating data frames
+
+The **dplyr** package from the **tidyverse** introduces functions that perform some of the most common operations when working with data frames and uses names for these functions that are relatively easy to remember. For instance, to change the data table by adding a new column, we use `mutate`. To filter the data table to a subset of rows, we use `filter`. Finally, to subset the data by selecting specific columns, we use `select.`
+
+### 4.3.1 Adding a column with `mutate`
+
+We want all the necessary information for our analysis to be included in the data table. So the first task is to add the murder rates to our murders data frame. The function `mutate` takes the data frame as a first argument and the name and values of the variable as a second argument using the convention `name = values`. So, to add murder rates, we use:
+```{r}
+library(dslabs)
+data("murders")
+murders <- mutate(murders, rate = total / population * 100000)
+```
+
+Notice that here we used `total` and `population` inside the function, which are objects that are **not** defined in our workspace. But why don’t we get an error?
+
+This is one of **dplyr**’s main features. Functions in this package, such as `mutate`, know to look for variables in the data frame provided in the first argument. In the call to mutate above, `total` will have the values in `murders$total`. This approach makes the code much more readable.
+
+We can see that the new column is added:
+```{r}
+head(murders)
+```
+
+Although we have overwritten the original `murders` object, this does not change the object that loaded with `data(murders)`. If we load the `murders` data again, the original will overwrite our mutated version.
+
+### 4.3.2 Subsetting with filter
+
+Now suppose that we want to filter the data table to only show the entries for which the murder rate is lower than 0.71. To do this we use the `filter` function, which takes the data table as the first argument and then the conditional statement as the second. Like `mutate`, we can use the unquoted variable names from `murders` inside the function and it will know we mean the columns and not objects in the workspace.
+```{r}
+filter(murders, rate <= 0.71)
+#>           state abb        region population total  rate
+#> 1        Hawaii  HI          West    1360301     7 0.515
+#> 2          Iowa  IA North Central    3046355    21 0.689
+#> 3 New Hampshire  NH     Northeast    1316470     5 0.380
+#> 4  North Dakota  ND North Central     672591     4 0.595
+#> 5       Vermont  VT     Northeast     625741     2 0.320
+```
+
+### 4.3.3 Selecting columns with `select`
+
+Although our data table only has six columns, some data tables include hundreds. If we want to view just a few, we can use the **dplyr** `select` function. In the code below we select three columns, assign this to a new object and then filter the new object:
+```{r}
+new_table <- select(murders, state, region, rate)
+filter(new_table, rate <= 0.71)
+#>           state        region  rate
+#> 1        Hawaii          West 0.515
+#> 2          Iowa North Central 0.689
+#> 3 New Hampshire     Northeast 0.380
+#> 4  North Dakota North Central 0.595
+#> 5       Vermont     Northeast 0.320
+```
+
+In the call to `select`, the first argument `murders` is an object, but `state`, `region`, and `rate` are variable names.
+
+
+## 4.4 Exercises
+
+1. Load the **dplyr** package and the murders dataset.
+```{r}
+library(dplyr)
+library(dslabs)
+data(murders)
+```
+You can add columns using the **dplyr** function `mutate`. This function is aware of the column names and inside the function you can call them unquoted:
+
+```{r}
+murders <- mutate(murders, population_in_millions = population / 10^6)
+#mutate: 변수추가
+```
+
+We can write `population` rather than `murders$population`. The function `mutate` knows we are grabbing columns from `murders`.
+
+Use the function `mutate` to add a murders column named `rate` with the per 100,000 murder rate as in the example code above. Make sure you redefine `murders` as done in the example code above ( murders <- [your code]) so we can keep using this variable.
+```{r}
+murders <- mutate(murders, rate = total / population * 100000)
+```
+
+
+2. If `rank(x)` gives you the ranks of `x` from lowest to highest, `rank(-x)` gives you the ranks from highest to lowest. Use the function `mutate` to add a column `rank` containing the rank, from highest to lowest murder rate. Make sure you redefine `murders` so we can keep using this variable.
+```{r}
+murders <- mutate(murders, rank = rank(-rate))
+```
+
+
+3. With **dplyr**, we can use `select` to show only certain columns. For example, with this code we would only show the states and population sizes:
+```{r}
+select(murders, state, population) %>% head()
+```
+
+Use `select` to show the state names and abbreviations in `murders`. Do not redefine murders, just show the results.
+```{r}
+select(murders, state, abb)
+```
+
+
+4. The **dplyr** function `filter` is used to choose specific rows of the data frame to keep. Unlike `select` which is for columns, `filter` is for rows. For example, you can show just the New York row like this:
+```{r}
+filter(murders, state == "New York")
+```
+
+You can use other logical vectors to filter rows.
+
+Use `filter` to show the top 5 states with the highest murder rates. After we add murder rate and rank, do not change the murders dataset, just show the result. Remember that you can filter based on the `rank` column.
+```{r}
+filter(murders, rank <= 5)
+```
+
+
+5. We can remove rows using the `!=` operator. For example, to remove Florida, we would do this:
+```{r}
+no_florida <- filter(murders, state != "Florida")
+#remove rows using the `!=` operator
+```
+
+Create a new data frame called `no_south` that removes states from the South region. How many states are in this category? You can use the function `nrow` for this.
+```{r}
+no_south <- filter(murders, region != "south")
+nrow(no_south)
+#nrow: dataframe의 행의 수를 출력하는 함수
+```
+
+
+6. We can also use %`in`% to filter with **dplyr**. You can therefore see the data from New York and Texas like this:
+```{r}
+filter(murders, state %in% c("New York", "Texas"))
+```
+
+Create a new data frame called `murders_nw` with only the states from the Northeast and the West. How many states are in this category?
+```{r}
+murders_nw <- filter(murders, region %in% c("Northeast", "West"))
+nrow(murders_nw)
+```
+
+
+7. Suppose you want to live in the Northeast or West **and** want the murder rate to be less than 1. We want to see the data for the states satisfying these options. Note that you can use logical operators with `filter.` Here is an example in which we filter to keep only small states in the Northeast region.
+```{r}
+filter(murders, population < 5000000 & region == "Northeast")
+```
+Make sure `murders` has been defined with `rate` and `rank` and still has all states. Create a table called `my_states` that contains rows for states satisfying both the conditions: it is in the Northeast or West and the murder rate is less than 1. Use `select` to show only the state name, the rate, and the rank.
+```{r}
+my_states <- filter(murders_nw, rate < 1)
+select(my_states, state, rate, rank)
+```
+
+
+
+## 4.5 The pipe: `%>%`
+
+With **dplyr** we can perform a series of operations, for example `select` and then `filter`, by sending the results of one function to another using what is called the pipe operator: `%>%`. Some details are included below.
+
+We wrote code above to show three variables (state, region, rate) for states that have murder rates below 0.71. To do this, we defined the intermediate object `new_table`. In **dplyr** we can write code that looks more like a description of what we want to do without intermediate objects:
+$$ \mbox{original data}
+\rightarrow \mbox{ select }
+\rightarrow \mbox{ filter }$$
+For such an operation, we can use the pipe `%>%`. The code looks like this:
+```{r}
+murders %>% select(state, region, rate) %>% filter(rate <= 0.71)
+#>           state        region  rate
+#> 1        Hawaii          West 0.515
+#> 2          Iowa North Central 0.689
+#> 3 New Hampshire     Northeast 0.380
+#> 4  North Dakota North Central 0.595
+#> 5       Vermont     Northeast 0.320
+```
+
+This line of code is equivalent to the two lines of code above. What is going on here?
+
+In general, the pipe sends the result of the left side of the pipe to be the first argument of the function on the right side of the pipe. Here is a very simple example:
+```{r}
+16 %>% sqrt()
+#> [1] 4
+```
+
+We can continue to pipe values along:
+```{r}
+16 %>% sqrt() %>% log2()
+#> [1] 2
+```
+
+The above statement is equivalent to `log2(sqrt(16))`.
+
+Remember that the pipe sends values to the first argument, so we can define other arguments as if the first argument is already defined:
+```{r}
+16 %>% sqrt() %>% log(base = 2)
+#> [1] 2
+```
+
+Therefore, when using the pipe with data frames and **dplyr**, we no longer need to specify the required first argument since the **dplyr** functions we have described all take the data as the first argument. In the code we wrote:
+```{r}
+murders %>% select(state, region, rate) %>% filter(rate <= 0.71)
+```
+
+`murders` is the first argument of the `select` function, and the new data frame (formerly `new_table`) is the first argument of the `filter` function.
+
+Note that the pipe works well with functions where the first argument is the input data. Functions in **tidyverse** packages like **dplyr** have this format and can be used easily with the pipe.
+
+
+
+## 4.6 Exercises
+
+1. The pipe `%>%` can be used to perform operations sequentially without having to define intermediate objects. Start by redefining murder to include rate and rank.
+```{r}
+murders <- mutate(murders, rate =  total / population * 100000, 
+                  rank = rank(-rate))
+```
+In the solution to the previous exercise, we did the following:
+```{r}
+my_states <- filter(murders, region %in% c("Northeast", "West") & 
+                      rate < 1)
+
+select(my_states, state, rate, rank)
+```
+The pipe `%>%` permits us to perform both operations sequentially without having to define an intermediate variable `my_states`. We therefore could have mutated and selected in the same line like this:
+```{r}
+mutate(murders, rate =  total / population * 100000, 
+       rank = rank(-rate)) %>%
+  select(state, rate, rank)
+```
+
+Notice that `select` no longer has a data frame as the first argument. The first argument is assumed to be the result of the operation conducted right before the `%>%`.
+
+Repeat the previous exercise, but now instead of creating a new object, show the result and only include the state, rate, and rank columns. Use a pipe `%>%` to do this in just one line.
+```{r}
+filter(murders, region %in% c("Northeast", "West") & 
+                      rate < 1) %>% select(state, rate, rank)
+```
+
+
+
+2. Reset `murders` to the original table by using `data(murders)`. Use a pipe to create a new data frame called `my_states` that considers only states in the Northeast or West which have a murder rate lower than 1, and contains only the state, rate and rank columns. The pipe should also have four components separated by three `%>%`. The code should look something like this:
+```{r}
+my_states <- murders %>%
+  mutate SOMETHING %>% 
+  filter SOMETHING %>% 
+  select SOMETHING
+```
+
+```{r}
+data(murders)
+my_states <- murders %>%
+  mutate(rate =  total / population * 100000, 
+       rank = rank(-rate)) %>% 
+  filter(region %in% c("Northeast", "West") & 
+                      rate < 1) %>% 
+  select(state, rate, rank)
+my_states
+```
+
