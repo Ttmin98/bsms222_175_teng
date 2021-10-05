@@ -250,7 +250,7 @@ m <- sum(x) / length(x)
 ```
 and the SD is defined as:
 ```{r}
-s <- sqrt(sum((x-mu)^2) / length(x))
+s <- sqrt(sum((x-m)^2) / length(x))
 ```
 
 which can be interpreted as the average distance between values and their average.
