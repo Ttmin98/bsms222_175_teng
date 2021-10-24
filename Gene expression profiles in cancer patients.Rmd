@@ -1,0 +1,396 @@
+---
+title: '[Tutorial] Gene expression profiles in cancer patients'
+output:
+  html_document:
+    df_print: paged
+---
+
+
+## **1. Introduction**
+
+Lung cancer one of major cancers, accounting for [2.09 million deaths out of the 9.6 million total cancer deaths in 2018](https://www.who.int/en/news-room/fact-sheets/detail/cancer). There are two main types of lung cancer: small cell lung carcinoma (SCLC) and non-small cell lung carcinoma (NSCLC). NSCLC is responsible for 85–90% of lung cancer cases and its two largest subtypes are lung adenocarcinoma (LUAD) and lung squamous cell carcinoma (LUSC).
+LUAD develops in the periphery of the lungs and may be associated with smoking, but is the most common lung cancer type among non-smokers. In contrast, LUSC accounts for 25–30% of all total lung cancer cases while LUAD accounts for 40% of all total lung cancer cases. LUSC are likely to be found in the middle of the lungs and is associated with smoking.
+
+In this tutorial, we will explore the sample dataset of LUSC and LUAD from the The Cancer Genome Atlas (TCGA), a public resource for the genomic dataset. Here we use two types of lung cancers - LUAD and LUSC and will examine which information we can use for genomic analyses of lung cancers.
+
+
+## **2. Obtain the gene expression profile dataset **
+
+To access the gene expression data, there are two ways
+
+1. Formal way (but slow): you can download the data as described in 2.1
+2. Simple ways: get the file from my dropbox link where I downloaded and save to R object as described in 2.2
+
+### **2.1. Download the data from GDC portal**
+
+You will need to install the TCGAbiolinks package to obtain the lung cancer gene expression profiles from TCGA.
+```{r}
+library(tidyverse)
+
+# Install the TCGAbiolinks package if necessary
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+BiocManager::install("TCGAbiolinks")
+
+library(TCGAbiolinks)
+```
+
+Then, Obtain the TCGA dataset from the GDC portal. You first download the gene expression dataset for Lung Adenocarcinoma (LUAD).
+```{r}
+query <- GDCquery(project = "TCGA-LUAD",
+                  data.category = "Transcriptome Profiling",
+                  data.type = "Gene Expression Quantification", 
+                  workflow.type = "HTSeq - FPKM-UQ")
+GDCdownload(query)
+d_luad0 <- GDCprepare(query)
+d_luad = as.data.frame(d_luad0@colData)
+```
+
+Now we are downloading the dataset for Lung Squamous Cell Carcinoma (LUSC).
+```{r}
+query <- GDCquery(project = "TCGA-LUSC",
+                  data.category = "Transcriptome Profiling",
+                  data.type = "Gene Expression Quantification", 
+                  workflow.type = "HTSeq - FPKM-UQ")
+GDCdownload(query)
+d_lusc0 <- GDCprepare(query)
+d_lusc = as.data.frame(d_lusc0@colData)
+```
+
+For simplicity, we are choosing only genes on the chromosome 1. Please save to the Rdata into your working folder.
+```{r}
+library(SummarizedExperiment)
+e_luad = assay(d_luad0)
+e_lusc = assay(d_lusc0)
+
+g_luad = d_luad0@rowRanges %>% as.data.frame() %>% filter(seqnames=='chr1') %>% pull(ensembl_gene_id)
+g_lusc = d_lusc0@rowRanges %>% as.data.frame() %>% filter(seqnames=='chr1') %>% pull(ensembl_gene_id)
+e_luad = e_luad[g_luad,]
+e_lusc = e_lusc[g_lusc,]
+
+save(d_luad, d_lusc, e_luad, e_lusc, file='data.TCGA_LUAD_LUSC.gene_expression.Rdata')
+```
+
+
+### **2.2. Get the file from the link**
+You can download the data from [this link](https://www.dropbox.com/s/uuoc725kwjnswg9/data.TCGA_LUAD_LUSC.gene_expression.Rdata?dl=0). Please save this file to the working folder. Then, load the objects to your workspace.
+```{r}
+load('data.TCGA_LUAD_LUSC.gene_expression.Rdata')
+```
+
+
+## **3. Explore the input dataset**
+
+Let’s explore which columns are provided in the LUAD dataset.
+```{r}
+colnames(d_luad)
+```
+
+Do we see the same columns for the LUSC dataset?
+```{r}
+colnames(d_lusc)
+```
+### **3.1. Which tissues or samples are available for your analysis?**
+
+Lung cancer samples in the dataset are provided in tumor or normal tissues. The column `shortLetterCode` contains [Sample Type Codes](https://gdc.cancer.gov/resources-tcga-users/tcga-code-tables/sample-type-codes) to describe the type of tissues collected in the dataset.
+
+1. TP: Primary solid Tumor
+2. TR: Recurrent solid Tumor
+3. NT: Solid Tissue Normal
+
+Check which samples are included in the LUAD dataset.
+```{r}
+d_luad %>% count(shortLetterCode)
+```
+Check which samples are included in the LUSC dataset.
+```{r}
+d_lusc %>% count(shortLetterCode)
+```
+
+Let’s make a simple bar plot to compare the number of tissues between two tissue types. We will look at the LUAD samples first.
+```{r}
+d_luad %>%
+  count(shortLetterCode) %>% 
+  ggplot(., aes(shortLetterCode, n, fill=shortLetterCode)) + 
+  geom_bar(stat="identity", position=position_dodge()) 
+
+# position=position_dodge(): arrange elements side by side.
+```
+
+Now we can plot the LUSC samples.
+```{r}
+d_lusc %>%
+  count(shortLetterCode) %>% 
+  ggplot(., aes(shortLetterCode, n, fill=shortLetterCode)) + 
+  geom_bar(stat="identity", position=position_dodge()) 
+```
+We made two separate plots for the LUAD and LUSC dataset. It would be great if we can merge them into one plot. Here I put the code for this. It would be good practice if you comment or delete the line that you don’t understand fully, you will compare the difference between outcomes. Also, please figure out what Qs do in this plot.
+```{r}
+# bind_rows: binding multiple data frames by row
+# 특이점- columns이 서로 동일하지 않아도 rows 기준으로 합칠 수 있음
+
+bind_rows(d_luad %>% 
+            mutate(type='luad') %>%
+            select(type, shortLetterCode, tumor_stage), 
+          d_lusc %>% 
+            mutate(type='lusc') %>%
+            select(type, shortLetterCode, tumor_stage)) %>%
+  count(shortLetterCode, type) %>% # bind_row한 것에서 shortLetterCode, type가 몇 개인가
+  complete(type, shortLetterCode, fill = list(n = 0)) %>% # Q1: What is this? complete(data, ..., fill = list()): shows each row that is complete w/o missing data. ...-> Specification of columns; fill-> name a single value to use instead of NA. 정리: type, shortLetterCode의 row에서 NA가 있으면 0으로 정해주어 complete form으로 만들어줌.
+  ggplot(., aes(shortLetterCode, n, fill=shortLetterCode)) + 
+  geom_bar(stat="identity", position=position_dodge()) + 
+  facet_wrap(~type, scales = 'free_x', ncol=5) # Q2: What is this? (변수 1개)type별로 x축으로 하여 각각 면 분할로 나타내고 y column을 고정시킨 5개의 열로 나뉜 그래프.
+```
+
+### **3.2. Distribution of clinical variables**
+
+We will plot the distribution of age at diagnosis using histogram. Few things you can check: - Is the distribution continuous? - Is it fowlloing the normal distribution? - What is the scale on the x-axis? - If the distribution is stratified, which makes it?
+```{r}
+# Plot histogram
+ggplot(d_luad, aes(age_at_diagnosis)) + geom_histogram(bins=100)
+# bins : 표현할 막대 갯수
+# binwidth: 막대를 나누는 단위 기준
+```
+
+The x-axis is a day scale. Let’s convert it to year.
+```{r}
+# Change the axis
+ggplot(d_luad, aes(age_at_diagnosis/365)) + geom_histogram(bins=100)
+```
+
+To create a smooth density, we use the geom_density.
+```{r}
+ggplot(d_luad, aes(age_at_diagnosis)) + geom_density()
+```
+
+More plot types on distribution. First we can try the plot for both histogram and density.
+```{r}
+# Plot both histogram and density plot
+ggplot(d_luad, aes(age_at_diagnosis/365)) + 
+  geom_histogram(bins=100, colour="black", fill="white") + 
+  geom_density(alpha=.2, fill="#FF6666")
+
+# color 인자로 histogram의 테두리의 색깔을, fill 인자로 histogram 내부의 색깔을 설정
+```
+
+What did you miss from this? #density..?
+
+Let’s plot a bit different version. We will replace the y-axis of the histogram with the y-axis of the density plot.
+```{r}
+# Histogram with density plot
+ggplot(d_luad, aes(age_at_diagnosis/365)) + 
+ geom_histogram(aes(y=..density..), colour="black", fill="white")+
+ geom_density(alpha=.2, fill="#FF6666") 
+```
+
+Q: Do you think whether it is good visualization for the distribution?
+
+From the plot above, we still found the bump around the center. What would contribute to this stratification? Let’s look at some variables from other columns. First we can try information from the `gender` column.
+```{r}
+ggplot(d_luad, aes(age_at_diagnosis/365, fill=gender)) + geom_histogram(bins=100)
+```
+
+Histogram would be okay but not best visualization. What else we can try?
+```{r}
+ggplot(d_luad, aes(gender, age_at_diagnosis/365, fill=gender)) + 
+  geom_boxplot()
+```
+
+Can you tell the difference between boxplot and density plot? We can try a violin plot.
+```{r}
+ggplot(d_luad, aes(gender, age_at_diagnosis/365, fill=gender)) + 
+  geom_violin()
+```
+
+Can you tell the difference between boxplot and violin plot?
+
+```{r}
+# ggplot(d_luad, aes(gender, age_at_diagnosis/365, fill=gender)) +
+#   geom_boxplot() + 
+#   geom_violin()
+
+# ggplot(d_luad, aes(gender, age_at_diagnosis/365, fill=gender)) +
+#   geom_violin() + 
+#   geom_boxplot()
+
+# ggplot(d_luad, aes(gender, age_at_diagnosis/365)) +
+#   geom_violin(aes(fill=gender)) + 
+#   geom_boxplot(fill='white')
+
+ggplot(d_luad, aes(gender, age_at_diagnosis/365)) +
+  geom_violin(aes(fill=gender)) + 
+  geom_boxplot(fill='white', width=0.25)
+```
+
+```{r}
+ggplot(d_luad, aes(gender, age_at_diagnosis/365)) + 
+  geom_violin(aes(fill=gender))  + 
+  geom_boxplot(fill='white') + 
+  geom_dotplot(binaxis='y', stackdir='center', dotsize=1, alpha=0.5)
+```
+
+```{r}
+
+# Try different options from the manual
+# http://www.sthda.com/english/wiki/ggplot2-violin-plot-quick-start-guide-r-software-and-data-visualization
+```
+
+```{r}
+ggplot(d_luad, aes(gender, age_at_diagnosis/365)) + 
+  geom_violin(aes(fill=gender), trim=FALSE)  + 
+  geom_boxplot(fill='white')
+# trim=FALSE로 적용했더니 위, 아래 끝부분이 붙어있는 그래프가 표현됨.
+```
+```{r}
+ex <- ggplot(d_luad, aes(gender, age_at_diagnosis/365)) + 
+  geom_violin(aes(fill=gender), trim=FALSE)
+ex + stat_summary(fun.data="mean_sdl", mult=1, 
+                 geom="crossbar", width=0.1 )
+ex + stat_summary(fun.data=mean_sdl, mult=1, 
+                 geom="pointrange", color="white")
+ex + geom_jitter(shape=16, position=position_jitter(0.2), size=1)
+```
+```{r}
+ex2 <- ggplot(d_luad, aes(gender, age_at_diagnosis/365)) + 
+  geom_violin(trim=FALSE, fill='#A4A4A4', color="darkred")
+ex2 + geom_boxplot(width=0.1) + theme_minimal()
+```
+
+Do you think gender is the reason? If not, how about tumor stages?
+```{r}
+ggplot(d_luad, aes(age_at_diagnosis/365)) + 
+  labs(x ='Age at Diagnosis (years)', y = 'Number of LUAD patients',
+       title = 'TCGA: Lung cancer adenocarcinoma') +
+  geom_histogram(bins=100) 
+```
+
+**More tasks for the class.**
+
++ Q1. Add labels for the plot.
++ Q2. Change the color for categories.
++ Q3. Save to PDF file
++ Q4. Select the column with continuous information and plot the distribution by yourself.
+
+```{r}
+# assign p for plot
+p <- ggplot(d_luad, aes(age_at_diagnosis/365)) + 
+  labs(x ='Age at Diagnosis (years)', y = 'Number of LUAD patients',
+       title = 'TCGA: Lung cancer adenocarcinoma') +
+  geom_histogram(bins=100) 
+
+
+# save to file
+ggsave('plot.TCGA_LUAD.histogram_AgeOfDX.20191002.pdf', p, width = 16, height = 9)
+```
+
+
+### **3.3. Tumor stages of lung cancers**
+
+First information you might want to explore is staging cancers. Different types of staging systems are used for different types of cancer. You can read [further information in general staging rules](https://www.nhs.uk/common-health-questions/operations-tests-and-procedures/what-do-cancer-stages-and-grades-mean/), or specifics in lung cancers ([e.g. stage IA](https://www.cancer.gov/publications/dictionaries/cancer-terms/def/stage-ia-non-small-cell-lung-cancer)).
+```{r}
+# Count the number of tumors in the LUAD dataset
+counts_tumor <- d_luad %>% count(tumor_stage)
+
+# Try bar plot
+ggplot(counts_tumor, aes(tumor_stage, n)) + geom_bar(stat="identity")
+```
+Now you can combine both for visualization.
+
+```{r}
+# Cancer type by tumor stages
+bind_rows(d_luad %>% 
+            filter(shortLetterCode == 'TP') %>% 
+            mutate(type='luad') %>%
+            select(type, tumor_stage), 
+          d_lusc %>% 
+            filter(shortLetterCode == 'TP') %>% 
+            mutate(type='lusc') %>%
+            select(type, tumor_stage)) %>% 
+  count(type, tumor_stage) %>%
+  mutate(tumor_stage = factor(tumor_stage, levels=rev(unique(tumor_stage)))) %>% # tumor_stage의 값을 반복되는거 빼고 역순으로 배열해준 거의 factor값을 원래의 tumor_stage column 대신 넣어
+  ggplot(aes(tumor_stage, n, fill=type)) + 
+  labs(title = 'Cancer type by tumor stages',
+       x = '', y='Number of samples for TCGA RNA-seq') + 
+  theme_minimal() + geom_bar(stat="identity") + 
+  facet_wrap(~type) + coord_flip() 
+
+# coord_flip(): x축과 y축의 구성을 뒤집어 표현하라는 명령어이며, x축과 y축의 위치가 바뀜과 동시에 가로의 막대로 값을 표현하는 bar그래프가 그려지도록 해줌
+```
+
+
+### **3.4. Cancer type by gender**
+
+Let’s try another information - gender. We will describe this by a bar plot like above. After plotting, which information you can read from this?
+NB: I am not pretty sure why TCGA put gender, not sex in the dataset, in addition to mixed use of female/male with gender.
+
+```{r}
+# Cancer type by Sex
+bind_rows(d_luad %>% 
+            filter(shortLetterCode == 'TP') %>% 
+            mutate(type='luad') %>%
+            select(type, gender), 
+          d_lusc %>% 
+            filter(shortLetterCode == 'TP') %>% 
+            mutate(type='lusc') %>%
+            select(type, gender)) %>% 
+  count(type, gender) %>%
+  ggplot(aes(gender, n, fill=type)) + 
+  labs(title = 'Cancer type by Sex',
+       x = '', y='Number of samples for TCGA RNA-seq') + 
+  theme_minimal() + geom_bar(stat="identity") + 
+  facet_wrap(~type) + coord_flip() 
+```
+Is there difference in tumor stages by gender? Let’s check with LUSC.
+```{r}
+# Add gender with stages
+bind_rows(d_luad %>% 
+            filter(shortLetterCode == 'TP') %>% 
+            mutate(type='luad') %>%
+            select(type, tumor_stage, gender), 
+          d_lusc %>% 
+            filter(shortLetterCode == 'TP') %>% 
+            mutate(type='lusc') %>%
+            select(type, tumor_stage, gender)) %>% 
+  count(type, tumor_stage, gender) %>% 
+  complete(gender, type, tumor_stage, fill = list(n = 0)) %>%
+  mutate(tumor_stage = factor(tumor_stage, levels=rev(unique(tumor_stage))), 
+         gender = factor(gender)) %>%
+  ggplot(., aes(tumor_stage, n, fill=gender)) + 
+  geom_bar(stat="identity", position=position_dodge()) + 
+  facet_wrap(~type) + coord_flip() 
+```
+
+### **3.5. Site of biopsy**
+
+```{r}
+# Cancer type by biopsy
+bind_rows(d_luad %>% 
+            filter(shortLetterCode == 'TP') %>% 
+            mutate(type='luad') %>%
+            select(type, site_of_resection_or_biopsy), 
+          d_lusc %>% 
+            filter(shortLetterCode == 'TP') %>% 
+            mutate(type='lusc') %>%
+            select(type, site_of_resection_or_biopsy)) %>% 
+  count(type, site_of_resection_or_biopsy) %>%
+  ggplot(aes(site_of_resection_or_biopsy, n, fill=type)) + 
+  labs(title = 'Cancer type by biopsy',
+       x = '', y='Number of samples for TCGA RNA-seq') + 
+  theme_minimal() + geom_bar(stat="identity") + 
+  facet_wrap(~type) + coord_flip() 
+```
+Plot the years at diagnosis by tissue or organ of origin. We would also include difference by gender.
+```{r}
+bind_rows(d_luad %>% 
+            filter(shortLetterCode == 'TP') %>% 
+            mutate(type='luad') %>%
+            select(type, gender, age_at_diagnosis, tissue_or_organ_of_origin), 
+          d_lusc %>% 
+            filter(shortLetterCode == 'TP') %>% 
+            mutate(type='lusc') %>%
+            select(type, gender, age_at_diagnosis, tissue_or_organ_of_origin)) %>%
+  ggplot(., aes(gender, age_at_diagnosis/365, fill=gender)) + 
+  geom_boxplot() + labs(y='year at diagnosis') + 
+  facet_wrap(~tissue_or_organ_of_origin)
+```
+
