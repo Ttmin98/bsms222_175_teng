@@ -1,0 +1,238 @@
+---
+title: "BSMS222_final_175_teng"
+output:
+  html_document:
+    df_print: paged
+---
+
+
+
+## Portfolio assignment
++ BSMS222 Biostatistics 
++ School of Biosystems & Biomedical Sciences
++ 2017250175 TEH MIN TENG
+
+## I.Intro
+### 1. Background
+Lung cancer is the leading cause of cancer-related deaths these days. Non small cell lung cancer (NSCLC) accounts for approximately 80~85% of all lung cancers and is divided into 3 subtypes adenocarcinoma, squamous cell carcinoma and large cell carcinoma. The different types of NSCLC develop in different locations of the lungs. In addition, studies have shown that lung cancer in East Asia is a distinct disease characterized by a high prevalence of non-smokers, especially women, and has much more frequent EGFR-activated mutations than whites[(Chen,...(2020))](https://www.sciencedirect.com/science/article/pii/S0092867420307431#mmc4).
+<img src='https://media.springernature.com/lw685/springer-static/image/art%3A10.1038%2F513S2a/MediaObjects/41586_2014_BF513S2a_Figb_HTML.jpg?as=webp' width='auto'>
+(https://www.semanticscholar.org/author/Aaron-Opoku-Amankwaa/7538182)
+
+### 2. Data Visualization Topic
+The purpose of this visualization is to find out which mutation EGFR gene appears differently depending on smoking status and gender. This is because EGFR mutations are most common in lung cancer patients. In addition, lung cancer is usually associated with smoking, and this paper mainly presents data on lung cancer for **non-smokers** within females.
+
+## II. Loading the Data
+### 1. Use *import* to load the excel data.
+
+Extract tableS1A from "1-s2.0-S0092867420307431-mmc1.xlsx"
+
+### 2. Manipulating the Data Frame
+```{r}
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+```
+
+```{r}
+class(tableS1A_103patient$EGFR_Status)
+```
+
+```{r}
+table(tableS1A_103patient$`Smoking Status`)
+```
+
+Expressing current smokers and ex-smokers together and non-smokers:
+```{r}
+Smk<- tableS1A_103patient %>% 
+  filter(`Smoking Status`!='Nonsmoke') %>% mutate(Smk_status = 'Y')
+NonSmk<- tableS1A_103patient %>% 
+  filter(`Smoking Status`=='Nonsmoke') %>% mutate(Smk_status = 'N')
+sp_t <- rbind.data.frame(Smk, NonSmk)
+```
+
+To remove 'L858R.exon19del' and 'others' in EGFR_status column:
+```{r}
+sp_t <- sp_t %>%
+  filter(EGFR_Status %in% c('exon19del','L858R','WT'))
+```
+
+### 3. Draw the Plot
+
+```{r}
+#I want to have each bar to have the same width -> use 'position_dodge'
+
+sp_t %>% 
+  ggplot(aes(Gender, fill=Smk_status))+ geom_bar(position=position_dodge(preserve = 'single'), colour="black")+ 
+  theme_bw()+ 
+  theme(axis.text.x=element_text(size=10))
+```
+
+## III. Discrimination
+From above, we drew a graph showing the number of people in EGFR status according to smoking status by gender.
+Now, we want to find out how much difference occurs between EGFR mutation (exon19 deletion, L858R) and WT following by gender.
+
+```{r}
+WT <- sp_t%>% 
+  filter(EGFR_Status =='WT')%>% 
+  group_by(Gender, Smk_status)%>%
+  count()%>% 
+  mutate(EGFR_Status ='WT')
+
+exon19_del <- sp_t%>% 
+  filter(EGFR_Status =='exon19del')%>% 
+  group_by(Gender, Smk_status)%>%
+  count()%>%
+  mutate(EGFR_Status ='exon19_del')
+
+L858R <- sp_t%>% 
+  filter(EGFR_Status =='L858R')%>% 
+  group_by(Gender, Smk_status)%>%
+  count()%>%
+  mutate(EGFR_Status ='L858R')
+```
+
+```{r}
+egfr <- rbind(WT,exon19_del,L858R)
+```
+
+```{r}
+M <- egfr %>% filter(Gender == "Male") 
+```
+
+```{r}
+Fe <- egfr %>% filter(Gender == "Female") 
+```
+Put all the data together, ready for visualization.
+```{r}
+total<- rbind(M, Fe)
+total
+```
+
+```{r}
+p <- total %>%
+  ggplot(aes(n, EGFR_Status, fill=Smk_status))+ geom_bar(stat='identity')+
+  facet_wrap(~Gender) + ggtitle('Differences in EGFR mutation between genders according to smoking status') + theme(plot.title = element_text(size = 11, face = "bold"))+ 
+  labs(x = 'Number of samples', y='EGFR status')+ 
+  geom_text(aes(n,label=n), position = position_stack(vjust=0.5), col="white",size=3)
+```
+
+Change the color by using `scale_fill_brewer`:
+```{r}
+p + scale_fill_brewer(palette="Dark2")
+```
+
+## IV. Discussion
+Following the last plot, we can discriminate the number of samples compared by gender which are smoking(current smoker & ex-smoker) and non-smoking. And these samples have different EGFR mutational status, especially for L858R and exon19 deletion. To sum up, when looking at the difference between males and females, mutations were only found in females, and L858R was particularly higher. In addition, it can be seen that EGFR mutation occurred on female group, even though women do not smoke. 
+
+
+## V. Redeem weak points
+
+### Original plot
+```{r}
+#> p <- total %>%
+#>  ggplot(aes(n, EGFR_Status, fill=Smk))+ geom_bar(stat='identity')+
+#>  facet_wrap(~Gender) + ggtitle('Differences in EGFR mutation between genders according to smoking status') + theme(plot.title = element_text(size = 11, face = "bold"))+ 
+#>  labs(x = 'Number of samples', y='EGFR status')+ 
+#>  geom_text(aes(n,label=n), position = positi on_stack(vjust=0.5), col="white",size=3)
+```
+
+
+*Opinions from 김예주*
+
+#### 1. Put three library function in one code block
+No matter how you put it in the code block, the library is executed separately every time.
+
+#### 2. The reason for eliminating "L585R.exon19del" from the column `EGFR_staus`:
+```{r}
+tableS1A_103patient$EGFR_Status %>% table()
+```
+As shown in this data, there is only 1 in `L858R.exon19del`. So it could be thought that it is unnecessary to mention it.
+(+ same feeback from 김정욱)
+
+#### 3. Rename the title of legend: 
+```{r}
+R <- total %>%
+  ggplot(aes(n, EGFR_Status, fill=Smk_status))+ geom_bar(stat='identity')+
+  facet_wrap(~Gender) + ggtitle('Differences in EGFR mutation between genders according to smoking status') + theme(plot.title = element_text(size = 11, face = "bold"))+ 
+  labs(x = 'Number of samples', y='EGFR status')+ 
+  geom_text(aes(n,label=n), position = position_stack(vjust=0.5), col="white",size=3)
+R
+```
+
+#### 4. Adjusting the color
+(The previous plot reminds the viewer that it looks like traffic lights- green: Yes, red: No)
+```{r}
+R + scale_fill_brewer(palette="Dark2", direction = -1)
+```
+
+*Opinions from 김용구*
+
+#### 5. Simpified the codes by using `for_loop`
+
+```{r}
+EGFR_mut <- c('WT', 'exon19del', 'L858R')
+
+egfr <- data.frame()
+for(i in 1:3){
+  m <- EGFR_mut[i]
+  m1 <- sp_t%>%
+    filter(EGFR_Status == m)%>%
+    group_by(Gender, Smk_status)%>%
+    count()%>%
+    mutate(EGFR_Status = m)
+  
+  egfr <- rbind.data.frame(egfr, m1)
+  }
+
+total <- egfr
+```
+
+```{r}
+R <- egfr %>%
+  ggplot(aes(n, EGFR_Status, fill=Smk_status))+ geom_bar(stat='identity')+
+  facet_wrap(~Gender) + ggtitle('Differences in EGFR mutation between genders according to smoking status') + theme(plot.title = element_text(size = 11, face = "bold"))+ 
+  labs(x = 'Number of samples', y='EGFR status')+ 
+  geom_text(aes(n,label=n), position = position_stack(vjust=0.5), col="white",size=3)
+R
+
+```
+
+
+*Opinions from 김정욱*
+
+#### 6. Correct the information
+I appreciated for finding the mistake that I mentioned the information incorrectly. I'd like to say that the difference between males and females is that females are all non-smoker, and males have higher smoking ratio, but the female group involves  a significant amount of mutation especially on L858R.
+
+#### 7. Make a plot that is expressed with ratio of samples
+
+```{r}
+WT_r <- WT %>% 
+  group_by(Gender, Smk_status)%>%
+  mutate(percentage=n/sum(WT$n)*100)
+
+exon19_del_r <- exon19_del %>% 
+  group_by(Gender, Smk_status)%>%
+  mutate(percentage=n/sum(exon19_del$n)*100)
+
+L858R_r <- L858R %>% 
+  group_by(Gender, Smk_status)%>%
+  mutate(percentage=n/sum(L858R$n)*100)
+```
+
+```{r}
+E <- rbind(WT_r, exon19_del_r, L858R_r)
+```
+
+```{r}
+library(RColorBrewer)
+display.brewer.all()
+```
+
+
+```{r}
+E %>% ggplot(aes(percentage, EGFR_Status, fill=Smk_status))+ geom_col(position="dodge")+
+  geom_text(aes(label=sprintf("%0.2f", round(percentage, digits = 2))), position = position_dodge(0.9), col="Dark Blue",size=3)+
+  facet_wrap(~Gender) + ggtitle('Differences in EGFR mutation between genders by smoking status(%)') + theme(plot.title = element_text(size = 9, face = "bold"))+ 
+  labs(x = 'Percentage(%)', y='EGFR status')+ theme_bw()+ scale_fill_brewer(palette="Paired")
+```
+
